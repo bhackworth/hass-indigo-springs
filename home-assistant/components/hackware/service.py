@@ -19,7 +19,7 @@ class Sample:
     def __init__(self, post_data: str) -> None:
         """Initialize a sample from JSON data."""
 
-        # TODO: use pydantic instead
+        # FUTURE: use pydantic
         sample_json = json.loads(post_data)
         self.sensor = sample_json["sensor"]
         self.temperature = (
@@ -45,7 +45,7 @@ class Sample:
         return f"Sensor {self.sensor}: temperature {self.temperature}, moisture {self.moisture}, voltage {self.voltage}"
 
 
-class HackHubServer(Thread):
+class HubServer(Thread):
     """Handle interactions with custom-written sensors."""
 
     def __init__(self, port: int) -> None:
@@ -88,6 +88,10 @@ class HackHubServer(Thread):
         """Generate an HTTP request handler class."""
 
         class RequestHandler(BaseHTTPRequestHandler):
+            def log_message(self, format, *args):
+                # Silence!
+                pass
+
             def do_POST(self):
                 content_length = int(self.headers["Content-Length"])
                 post_data = self.rfile.read(content_length).decode("utf8")

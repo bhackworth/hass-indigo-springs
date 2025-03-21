@@ -6,6 +6,8 @@
 
 #include "arduino_secrets.h"
 
+#define FW_VERSION "0.1.2"
+
 // WiFi, HTTP settings
 #ifndef WL_MAC_ADDR_LENGTH
 #define WL_MAC_ADDR_LENGTH 6
@@ -26,7 +28,7 @@ server_t servers[] = {
 // Sleep settings
 #define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
 RTC_DATA_ATTR int bootCount = 0;
-#define USE_DEEP_SLEEP 0
+#define USE_LIGHT_SLEEP 0
 int secondsToSleep = 15; // * 60;
 
 // Soil moisture settings
@@ -77,14 +79,7 @@ void setup() {
       "%02X%02X%02X", macAddress[3], macAddress[4], macAddress[5]);
   printWifiStatus();
 
-
-#if USE_DEEP_SLEEP
-  sample_and_send();
-  Serial.flush();
-  delay(2000);
   esp_sleep_enable_timer_wakeup(secondsToSleep * uS_TO_S_FACTOR);
-  esp_deep_sleep_start();
-#endif
 }
 
 int sampleDiff(sample_t a, sample_t b) {
@@ -104,6 +99,7 @@ void send_sample(sample_t sample) {
         json["moisture"] = sample.moisture;
         json["temperature"] = sample.temperature;
         json["sensor"] = sensorName;
+        json["fw-version"] = FW_VERSION;
 
         String data;
         serializeJson(json, data);
@@ -122,7 +118,6 @@ void send_sample(sample_t sample) {
         Serial.printf("couldn't connect to %s:%d\n", server.host, server.port);
       }
   }
-
 }
 
 void calibrate() {
@@ -155,7 +150,7 @@ void sample_and_send() {
   newSample.temperature = temperatureRead();
 
   // print out the values you read:
-  Serial.printf("Volts: %d, %f.2%% wet, %s\n",
+  Serial.printf("Volts: %d, %.2f%% wet, %s\n",
                 newSample.voltage,
                 newSample.moisture,
                 (newSample.moisture < dryThreshold) ? "DRY" : "WET");
@@ -169,13 +164,22 @@ void sample_and_send() {
 /* -------------------------------------------------------------------------- */
 void loop() {
 /* -------------------------------------------------------------------------- */
-#if !USE_DEEP_SLEEP
   if (needToCalibrate) {
     calibrate();
     needToCalibrate = 0;
   }
   sample_and_send();
 
+#if USE_LIGHT_SLEEP
+  Serial.println("Light sleeping now");
+  Serial.flush();
+  delay(100);
+  int rc = esp_light_sleep_start();
+  if (rc != ESP_OK) {
+    Serial.printf("Error %d trying to start light sleep.\n", rc);
+    delay(secondsToSleep * 1000);
+  }
+#else
   delay(secondsToSleep * 1000);
 #endif
 }

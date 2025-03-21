@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import random
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import Platform
 
 from .const import DOMAIN
-from .HackHubServer import Sample
+from .service import Sample
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ async def async_setup_entry(
 
     hub.set_add_entities_callback(add_entities)
 
-    for sn in ["418224"]:
+    for sn in "418224":
         await hub.async_add(Device(hass, sn))
 
     # _LOGGER.info(f"Add {len(hub.get_entities())} hackware sensor entities")
@@ -58,16 +57,6 @@ class Device(Entity):
         self.hass = hass
         self.name = "Brian moisture probe"
         self._attr_icon = "mdi:hub-outline"
-        self.OBSOLETE_attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.unique_id)},
-            manufacturer="Hackworth",
-            # model="PR-01",
-            model_id="PROBE-01",
-            name=self.name,
-            # serial_number="0123",
-            sw_version="0.1",
-            hw_version="0.1",
-        )
         self._attr_state = "online"
         self.entities: list[Entity] = [
             HackwareMoistureSensor(self),
@@ -79,7 +68,6 @@ class Device(Entity):
         self.temperature = sample.temperature
         self.moisture = sample.moisture
         if self.hass:
-            _LOGGER.info(f"Updating {len(self.entities)} values for {self.unique_id}")
             for s in list(self.entities):
                 s.async_write_ha_state()
 
@@ -98,7 +86,6 @@ class Device(Entity):
             sw_version="0.1",
             hw_version="0.1",
         )
-        # self.platform.async_add_entities(self.get_entities())
 
 
 class SensorBase(SensorEntity):
