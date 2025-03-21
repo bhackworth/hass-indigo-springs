@@ -14,7 +14,7 @@ class Sample:
     temperature: float | None
     humidity: float | None
     moisture: float | None
-    voltage: float | None
+    voltage: int | None
 
     def __init__(self, post_data: str) -> None:
         """Initialize a sample from JSON data."""
@@ -22,18 +22,10 @@ class Sample:
         # FUTURE: use pydantic
         sample_json = json.loads(post_data)
         self.sensor = sample_json["sensor"]
-        self.temperature = (
-            float(sample_json["temperature"]) if "temperature" in sample_json else None
-        )
-        self.humidity = (
-            float(sample_json["humidity"]) if "humidity" in sample_json else None
-        )
-        self.moisture = (
-            float(sample_json["moisture"]) if "moisture" in sample_json else None
-        )
-        self.voltage = (
-            float(sample_json["voltage"]) if "voltage" in sample_json else None
-        )
+        self.temperature = sample_json.get("temperature", None)
+        self.humidity = sample_json.get("humidity", None)
+        self.moisture = sample_json.get("moisture", None)
+        self.voltage = sample_json.get("voltage", None)
 
     @staticmethod
     def from_json_str(post_data: str):
@@ -42,7 +34,7 @@ class Sample:
 
     def __str__(self):
         """Return a viewable version of the sample."""
-        return f"Sensor {self.sensor}: temperature {self.temperature}, moisture {self.moisture}, voltage {self.voltage}"
+        return f"Sensor {self.sensor}: {self.temperature}°, {self.moisture}%, {self.voltage} v"
 
 
 class HubServer(Thread):

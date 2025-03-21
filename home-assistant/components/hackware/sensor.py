@@ -28,12 +28,6 @@ async def async_setup_entry(
 
     hub.set_add_entities_callback(add_entities)
 
-    for sn in "418224":
-        await hub.async_add(Device(hass, sn))
-
-    # _LOGGER.info(f"Add {len(hub.get_entities())} hackware sensor entities")
-    # add_entities(hub.get_entities())
-
     return True
 
 
