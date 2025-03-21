@@ -45,8 +45,6 @@ class Device(Entity):
     def __init__(self, hass: HomeAssistant, name: str) -> None:
         """Initialize the device that contains some sensors."""
 
-        # self._attr_device_info["name"] = name
-
         self.unique_id = name
         self.hass = hass
         self.name = "Brian moisture probe"
@@ -61,9 +59,9 @@ class Device(Entity):
         """Update values with a new sample."""
         self.temperature = sample.temperature
         self.moisture = sample.moisture
-        if self.hass:
-            for s in list(self.entities):
-                s.async_write_ha_state()
+
+        for s in list(self.entities):
+            s.async_write_ha_state()
 
     async def async_add_to_hass(self, entry_id: str) -> None:
         """Add this device to HA."""
@@ -91,7 +89,6 @@ class SensorBase(SensorEntity):
     def __init__(self, device: Device) -> None:
         """Initialize the sensor."""
         self.device = device
-        self.hass = device.hass
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -109,17 +106,18 @@ class HackwareMoistureSensor(SensorBase):
 
     device_class = SensorDeviceClass.HUMIDITY
     _attr_icon = "mdi:water-percent"
-    _attr_unit_of_measurement = PERCENTAGE
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+    _attr_name = "Soil moisture"
 
     def __init__(self, device: Device) -> None:
         """Initialize the sensor."""
 
         super().__init__(device)
         self.unique_id = f"{device.unique_id}_moisture"
-        self.name = "Soil moisture"
 
     @property
-    def state(self) -> int:
+    def native_value(self) -> float:
         """Return the state of the sensor (a percentage)."""
         return self.device.moisture
 
@@ -129,16 +127,17 @@ class HackwareTempSensor(SensorBase):
 
     device_class = SensorDeviceClass.TEMPERATURE
     _attr_icon = "mdi:home-thermometer-outline"
-    _attr_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_suggested_display_precision = 0
+    _attr_name = "Temperature"
 
     def __init__(self, device: Device) -> None:
         """Initialize the sensor."""
 
         super().__init__(device)
         self.unique_id = f"{device.unique_id}_temperature"
-        self.name = "Temperature"
 
     @property
-    def state(self) -> int:
-        """Return the state of the sensor (a percentage)."""
+    def native_value(self) -> float:
+        """Return the temperature."""
         return self.device.temperature
