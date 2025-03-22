@@ -1,12 +1,14 @@
 #include <ArduinoJson.h>
+#include <DHT.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <NetworkClient.h>
 #include <HTTPClient.h>
+#include <math.h>
 
 #include "arduino_secrets.h"
 
-#define FW_VERSION "0.1.2"
+#define FW_VERSION "0.1.3"
 
 // WiFi, HTTP settings
 #ifndef WL_MAC_ADDR_LENGTH
@@ -25,22 +27,22 @@ server_t servers[] = {
   { "homeassistant", 8234 }
 };
 
-// Sleep settings
-#define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
-RTC_DATA_ATTR int bootCount = 0;
-#define USE_LIGHT_SLEEP 0
+#define MILLI (1000)
+#define MICRO (1000 * 1000)
+
 int secondsToSleep = 15; // * 60;
 
 // Soil moisture settings
-int moisturePin = D1;
+int dhtPin = 0;
+int moisturePin = 1;
 char sensorName[7];
 
 int highestSeen = 0;
 int lowestSeen = 4095;
 
 // These calibrated with 3.3v on ESP32-C6
-int superWet = highestSeen;
-int superDry = lowestSeen;
+int superWet = 1650;
+int superDry = 2150;
 int dryThreshold = 40;  // percent
 
 int ledPin = LED_BUILTIN;
@@ -53,17 +55,17 @@ typedef struct {
   int voltage;
   float moisture;
   float temperature;
+  float humidity;
 } sample_t;
 
 sample_t sample = { 0 };
 
+DHT dht(dhtPin, DHT11);
 
 void setup() {
   Serial.begin(115200);
 
-  ++bootCount;
-  Serial.printf("Boot #%d\n", bootCount);
-
+  dht.begin();
   pinMode(moisturePin, INPUT);
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, ledOFF);
@@ -78,8 +80,6 @@ void setup() {
   snprintf(sensorName, sizeof(sensorName)/sizeof(char),
       "%02X%02X%02X", macAddress[3], macAddress[4], macAddress[5]);
   printWifiStatus();
-
-  esp_sleep_enable_timer_wakeup(secondsToSleep * uS_TO_S_FACTOR);
 }
 
 int sampleDiff(sample_t a, sample_t b) {
@@ -98,6 +98,7 @@ void send_sample(sample_t sample) {
         json["voltage"] = sample.voltage;
         json["moisture"] = sample.moisture;
         json["temperature"] = sample.temperature;
+        json["humidity"] = sample.humidity;
         json["sensor"] = sensorName;
         json["fw-version"] = FW_VERSION;
 
@@ -147,7 +148,11 @@ void sample_and_send() {
 
   newSample.voltage = analogReadMilliVolts(moisturePin);
   newSample.moisture = 100.0 - ((float)(newSample.voltage - superWet) * 100.0 / (float)(superDry - superWet));
-  newSample.temperature = temperatureRead();
+  newSample.moisture = max(newSample.moisture, 0.0F);
+  newSample.moisture = min(newSample.moisture, 100.0F);
+
+  newSample.temperature = dht.readTemperature();
+  newSample.humidity = dht.readHumidity();
 
   // print out the values you read:
   Serial.printf("Volts: %d, %.2f%% wet, %s\n",
@@ -170,18 +175,7 @@ void loop() {
   }
   sample_and_send();
 
-#if USE_LIGHT_SLEEP
-  Serial.println("Light sleeping now");
-  Serial.flush();
-  delay(100);
-  int rc = esp_light_sleep_start();
-  if (rc != ESP_OK) {
-    Serial.printf("Error %d trying to start light sleep.\n", rc);
-    delay(secondsToSleep * 1000);
-  }
-#else
-  delay(secondsToSleep * 1000);
-#endif
+  delay(secondsToSleep * MILLI);
 }
 
 void printWifiStatus() {

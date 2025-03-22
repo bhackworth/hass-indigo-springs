@@ -35,6 +35,7 @@ class Device(Entity):
     """Base class for all of our devices."""
 
     temperature = None
+    humidity = None
     moisture = None
 
     should_poll = False
@@ -53,11 +54,13 @@ class Device(Entity):
         self.entities: list[Entity] = [
             HackwareMoistureSensor(self),
             HackwareTempSensor(self),
+            HackwareHumiditySensor(self),
         ]
 
     async def async_update_state(self, sample: Sample) -> None:
         """Update values with a new sample."""
         self.temperature = sample.temperature
+        self.humidity = sample.humidity
         self.moisture = sample.moisture
 
         for s in list(self.entities):
@@ -102,7 +105,7 @@ class SensorBase(SensorEntity):
 
 
 class HackwareMoistureSensor(SensorBase):
-    """Representation of a moisture or moisture sensor."""
+    """Representation of a soil moisture sensor."""
 
     device_class = SensorDeviceClass.HUMIDITY
     _attr_icon = "mdi:water-percent"
@@ -120,6 +123,27 @@ class HackwareMoistureSensor(SensorBase):
     def native_value(self) -> float:
         """Return the state of the sensor (a percentage)."""
         return self.device.moisture
+
+
+class HackwareHumiditySensor(SensorBase):
+    """Representation of a relative humidity sensor."""
+
+    device_class = SensorDeviceClass.HUMIDITY
+    _attr_icon = "mdi:water-percent"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+    _attr_name = "Humidity"
+
+    def __init__(self, device: Device) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(device)
+        self.unique_id = f"{device.unique_id}_humidity"
+
+    @property
+    def native_value(self) -> float:
+        """Return the state of the sensor (a percentage)."""
+        return self.device.humidity
 
 
 class HackwareTempSensor(SensorBase):
