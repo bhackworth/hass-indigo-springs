@@ -37,24 +37,31 @@ class Device(Entity):
     temperature = None
     humidity = None
     moisture = None
+    battery = None
 
     should_poll = False
     entity_description = EntityDescription(
         key="hackware", name="Hackware Device", icon="mdi:hub-outline"
     )
 
-    def __init__(self, hass: HomeAssistant, name: str) -> None:
+    def __init__(self, hass: HomeAssistant, sample: Sample) -> None:
         """Initialize the device that contains some sensors."""
 
-        self.unique_id = name
+        self.sn = sample.sn
+        self.temperature = sample.temperature
+        self.humidity = sample.humidity
+        self.moisture = sample.moisture
+        self.battery = sample.battery
+        self.unique_id = f"probe_{self.sn}"
         self.hass = hass
-        self.name = "Brian moisture probe"
+        self.name = f"Probe {self.sn}"
         self._attr_icon = "mdi:hub-outline"
         self._attr_state = "online"
         self.entities: list[Entity] = [
             HackwareMoistureSensor(self),
             HackwareTempSensor(self),
             HackwareHumiditySensor(self),
+            HackwareBatterySensor(self),
         ]
 
     async def async_update_state(self, sample: Sample) -> None:
@@ -62,6 +69,7 @@ class Device(Entity):
         self.temperature = sample.temperature
         self.humidity = sample.humidity
         self.moisture = sample.moisture
+        self.battery = sample.battery
 
         for s in list(self.entities):
             s.async_write_ha_state()
@@ -74,10 +82,10 @@ class Device(Entity):
             config_entry_id=entry_id,
             identifiers={(DOMAIN, self.unique_id)},
             manufacturer="Hackworth",
-            name="Brian moisture probe",
+            name=self.name,
             model="PROBE",
             model_id="PROBE-01",
-            serial_number=self.unique_id,
+            serial_number=self.sn,
             sw_version="0.1",
             hw_version="0.1",
         )
@@ -88,6 +96,7 @@ class SensorBase(SensorEntity):
 
     should_poll = False
     platform = Platform.SENSOR
+    _attr_has_entity_name = True
 
     def __init__(self, device: Device) -> None:
         """Initialize the sensor."""
@@ -147,7 +156,7 @@ class HackwareHumiditySensor(SensorBase):
 
 
 class HackwareTempSensor(SensorBase):
-    """Representation of a temperature sensor."""
+    """Representation of a battery sensor."""
 
     device_class = SensorDeviceClass.TEMPERATURE
     _attr_icon = "mdi:home-thermometer-outline"
@@ -165,3 +174,24 @@ class HackwareTempSensor(SensorBase):
     def native_value(self) -> float:
         """Return the temperature."""
         return self.device.temperature
+
+
+class HackwareBatterySensor(SensorBase):
+    """Representation of a battery sensor."""
+
+    device_class = SensorDeviceClass.BATTERY
+    _attr_icon = "mdi:battery"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 0
+    _attr_name = "Battery"
+
+    def __init__(self, device: Device) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(device)
+        self.unique_id = f"{device.unique_id}_battery"
+
+    @property
+    def native_value(self) -> float:
+        """Return the battery level."""
+        return self.device.battery

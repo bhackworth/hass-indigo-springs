@@ -10,22 +10,24 @@ from typing import Any, override
 class Sample:
     """A single measurement from one of the Hackware devices."""
 
-    sensor: str
+    sn: str
     temperature: float | None
     humidity: float | None
     moisture: float | None
     voltage: int | None
+    battery: float | None
 
     def __init__(self, post_data: str) -> None:
         """Initialize a sample from JSON data."""
 
         # FUTURE: use pydantic
         sample_json = json.loads(post_data)
-        self.sensor = sample_json["sensor"]
+        self.sn = sample_json["sensor"]
         self.temperature = sample_json.get("temperature", None)
         self.humidity = sample_json.get("humidity", None)
         self.moisture = sample_json.get("moisture", None)
         self.voltage = sample_json.get("voltage", None)
+        self.battery = sample_json.get("battery", None)
 
     @staticmethod
     def from_json_str(post_data: str):
@@ -34,7 +36,9 @@ class Sample:
 
     def __str__(self):
         """Return a viewable version of the sample."""
-        return f"Sensor {self.sensor}: {self.temperature}°, {self.moisture}%, {self.voltage} v"
+        return (
+            f"Sensor {self.sn}: {self.temperature}°, {self.moisture}%, {self.voltage} v"
+        )
 
 
 class HubServer(Thread):

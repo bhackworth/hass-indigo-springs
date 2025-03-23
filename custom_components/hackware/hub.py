@@ -50,23 +50,23 @@ class HackHub:
     async def async_add(self, device: Device) -> None:
         """Add a new device, along with its sensors."""
 
-        self.devices[device.unique_id] = device
+        self.devices[device.sn] = device
         await device.async_add_to_hass(self.entry.entry_id)
         if self._add_entities:
             self._add_entities(device.entities)
 
     def update_sensor_value(self, reading: Sample, cbdata) -> None:
         """Handle new readings."""
-        if not reading.sensor:
+        if not reading.sn:
             return
 
         device: Device = None
-        if reading.sensor in self.devices:
+        if reading.sn in self.devices:
             _LOGGER.info(reading)
-            device = self.devices[reading.sensor]
+            device = self.devices[reading.sn]
         else:
-            _LOGGER.info(f"Add new device: {reading.sensor}")  # noqa: G004
-            device = Device(self.hass, reading.sensor)
+            _LOGGER.info(f"Add new device: {reading.sn}")  # noqa: G004
+            device = Device(self.hass, reading)
             self.hass.add_job(self.async_add.__get__(self, self.__class__), device)
 
         self.hass.add_job(

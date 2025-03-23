@@ -8,7 +8,7 @@
 
 #include "arduino_secrets.h"
 
-#define FW_VERSION "0.1.4"
+#define FW_VERSION "0.1.5"
 
 // WiFi, HTTP settings
 #ifndef WL_MAC_ADDR_LENGTH
@@ -35,11 +35,15 @@ int secondsToSleep = 15; // * 60;
 // Soil moisture settings
 int dhtPin = 0;
 int moisturePin = 1;
+int batteryPin = 2;
 char sensorName[7];
 
 // These calibrated with 3.3v on ESP32-C6
-float superWet = 1048.0F;
-float superDry = 2048.0F;
+float superWet = 1048;
+float superDry = 2048;
+
+int batteryFull = 4200; // millivolts, according to spec
+int batteryEmpty = 3000; // millivots
 
 int ledPin = LED_BUILTIN;
 int ledON = LOW;
@@ -52,6 +56,7 @@ typedef struct {
   float moisture;
   float temperature;
   float humidity;
+  float battery;
 } sample_t;
 
 sample_t sample = { 0 };
@@ -63,6 +68,7 @@ void setup() {
 
   dht.begin();
   pinMode(moisturePin, INPUT);
+  pinMode(batteryPin, INPUT);
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, ledOFF);
 
@@ -95,6 +101,7 @@ void send_sample(sample_t sample) {
         json["moisture"] = sample.moisture;
         json["temperature"] = sample.temperature;
         json["humidity"] = sample.humidity;
+        json["battery"] = sample.battery;
         json["sensor"] = sensorName;
         json["fw-version"] = FW_VERSION;
 
@@ -123,12 +130,15 @@ void sample_and_send() {
   digitalWrite(ledPin, ledON);
 
   newSample.voltage = analogReadMilliVolts(moisturePin);
-  newSample.moisture = 100.0 - (((float)(newSample.voltage) - superWet) * 100.0 / (superDry - superWet));
-  newSample.moisture = max(newSample.moisture, 0.0F);
-  newSample.moisture = min(newSample.moisture, 100.0F);
+  newSample.moisture = map(newSample.voltage, superWet, superDry, 1000, 0) / 10.0;
+  newSample.moisture = constrain(newSample.moisture, 0.0F, 100.0F);
 
   newSample.temperature = dht.readTemperature();
   newSample.humidity = dht.readHumidity();
+
+  int millivolts = analogReadMilliVolts(batteryPin);
+  millivolts *= 2; // battery divider circuit
+  newSample.battery = map(millivolts, batteryEmpty, batteryFull, 0, 100);
 
   if (true || sampleDiff(newSample, sample)) {
     send_sample(newSample);
