@@ -8,7 +8,7 @@
 
 #include "arduino_secrets.h"
 
-#define FW_VERSION "0.1.3"
+#define FW_VERSION "0.1.4"
 
 // WiFi, HTTP settings
 #ifndef WL_MAC_ADDR_LENGTH
@@ -37,13 +37,9 @@ int dhtPin = 0;
 int moisturePin = 1;
 char sensorName[7];
 
-int highestSeen = 0;
-int lowestSeen = 4095;
-
 // These calibrated with 3.3v on ESP32-C6
-int superWet = 1650;
-int superDry = 2150;
-int dryThreshold = 40;  // percent
+float superWet = 1048.0F;
+float superDry = 2048.0F;
 
 int ledPin = LED_BUILTIN;
 int ledON = LOW;
@@ -121,44 +117,18 @@ void send_sample(sample_t sample) {
   }
 }
 
-void calibrate() {
-  digitalWrite(ledPin, ledON);
-  int startTime = millis();
-  int endTime = startTime + 20000;
-  Serial.println("Insert the probe into water and remove");
-
-  while (millis() < endTime) {
-    int analogVolts = analogReadMilliVolts(moisturePin);
-
-    if (analogVolts > 0) {
-      highestSeen = max(highestSeen, analogVolts);
-      lowestSeen = min(lowestSeen, analogVolts);
-    }
-    delay(50);
-  }
-  Serial.printf("Range of values is %d to %d\n", lowestSeen, highestSeen);
-  superWet = lowestSeen;
-  superDry = highestSeen;
-  digitalWrite(ledPin, ledOFF);
-}
 void sample_and_send() {
   sample_t newSample = { 0 };
 
   digitalWrite(ledPin, ledON);
 
   newSample.voltage = analogReadMilliVolts(moisturePin);
-  newSample.moisture = 100.0 - ((float)(newSample.voltage - superWet) * 100.0 / (float)(superDry - superWet));
+  newSample.moisture = 100.0 - (((float)(newSample.voltage) - superWet) * 100.0 / (superDry - superWet));
   newSample.moisture = max(newSample.moisture, 0.0F);
   newSample.moisture = min(newSample.moisture, 100.0F);
 
   newSample.temperature = dht.readTemperature();
   newSample.humidity = dht.readHumidity();
-
-  // print out the values you read:
-  Serial.printf("Volts: %d, %.2f%% wet, %s\n",
-                newSample.voltage,
-                newSample.moisture,
-                (newSample.moisture < dryThreshold) ? "DRY" : "WET");
 
   if (true || sampleDiff(newSample, sample)) {
     send_sample(newSample);
@@ -166,15 +136,9 @@ void sample_and_send() {
   }
   digitalWrite(ledPin, ledOFF);
 }
-/* -------------------------------------------------------------------------- */
-void loop() {
-/* -------------------------------------------------------------------------- */
-  if (needToCalibrate) {
-    calibrate();
-    needToCalibrate = 0;
-  }
-  sample_and_send();
 
+void loop() {
+  sample_and_send();
   delay(secondsToSleep * MILLI);
 }
 
