@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
@@ -97,6 +98,7 @@ class SensorBase(SensorEntity):
     should_poll = False
     platform = Platform.SENSOR
     _attr_has_entity_name = True
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, device: Device) -> None:
         """Initialize the sensor."""
