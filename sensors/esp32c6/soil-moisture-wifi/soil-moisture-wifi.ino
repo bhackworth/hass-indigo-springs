@@ -6,9 +6,10 @@
 #include <HTTPClient.h>
 #include <math.h>
 
+#include "../../../../../../../../../src/hackware/sensors/include/smooth.hpp"
 #include "arduino_secrets.h"
 
-#define FW_VERSION "0.1.5"
+#define FW_VERSION "0.1.6"
 
 // WiFi, HTTP settings
 #ifndef WL_MAC_ADDR_LENGTH
@@ -52,14 +53,14 @@ int ledOFF = HIGH;
 int needToCalibrate = 0;
 
 typedef struct {
-  int voltage;
-  float moisture;
-  float temperature;
-  float humidity;
-  float battery;
+  Smooth<int, 20> voltage;
+  Smooth<float, 20> moisture;
+  Smooth<float, 20> temperature;
+  Smooth<float, 20> humidity;
+  Smooth<float, 20> battery;
 } sample_t;
 
-sample_t sample = { 0 };
+sample_t samples;
 
 DHT dht(dhtPin, DHT11);
 
@@ -83,12 +84,10 @@ void setup() {
       "%02X%02X%02X", macAddress[3], macAddress[4], macAddress[5]);
   printWifiStatus();
 }
-
-int sampleDiff(sample_t a, sample_t b) {
-  return (a.moisture != b.moisture);
+float roundoff(float val) {
+  return floor((val * 10.0) + 0.5) / 10.0;
 }
-
-void send_sample(sample_t sample) {
+void send_sample(sample_t * samples) {
   WiFiClient net;
   HTTPClient client;
 
@@ -97,12 +96,13 @@ void send_sample(sample_t sample) {
       Serial.printf("\nConnecting to %s:%d\n", server.host, server.port);
       if (client.begin(net, server.host, server.port, "/api/samples")) {
         JsonDocument json;
-        json["voltage"] = sample.voltage;
-        json["moisture"] = sample.moisture;
-        json["temperature"] = sample.temperature;
-        json["humidity"] = sample.humidity;
-        json["battery"] = sample.battery;
+        json["voltage"] = samples->voltage.get();
+        json["moisture"] = roundoff(samples->moisture.get());
+        json["temperature"] = roundoff(samples->temperature.get());
+        json["humidity"] = roundoff(samples->humidity.get());
+        json["battery"] = roundoff(samples->battery.get());
         json["sensor"] = sensorName;
+        json["sn"] = sensorName;
         json["fw-version"] = FW_VERSION;
 
         String data;
@@ -125,25 +125,25 @@ void send_sample(sample_t sample) {
 }
 
 void sample_and_send() {
-  sample_t newSample = { 0 };
 
   digitalWrite(ledPin, ledON);
 
-  newSample.voltage = analogReadMilliVolts(moisturePin);
-  newSample.moisture = map(newSample.voltage, superWet, superDry, 1000, 0) / 10.0;
-  newSample.moisture = constrain(newSample.moisture, 0.0F, 100.0F);
+  int moistureVolts = analogReadMilliVolts(moisturePin);
+  float moisture = map(moistureVolts, superWet, superDry, 1000, 0) / 10.0;
+  moisture = constrain(moisture, 0.0F, 100.0F);
+  moisture = floor((moisture * 10.0) + .5)/ 10.0; // truncate to one decimal place
+  samples.voltage.add(moistureVolts);
+  samples.moisture.add(moisture);
 
-  newSample.temperature = dht.readTemperature();
-  newSample.humidity = dht.readHumidity();
+  samples.temperature.add(dht.readTemperature());
+  samples.humidity.add(dht.readHumidity());
 
   int millivolts = analogReadMilliVolts(batteryPin);
   millivolts *= 2; // battery divider circuit
-  newSample.battery = map(millivolts, batteryEmpty, batteryFull, 0, 100);
+  samples.battery.add(map(millivolts, batteryEmpty, batteryFull, 0, 100));
 
-  if (true || sampleDiff(newSample, sample)) {
-    send_sample(newSample);
-    memcpy(&sample, &newSample, sizeof(newSample));
-  }
+  send_sample(&samples);
+
   digitalWrite(ledPin, ledOFF);
 }
 
