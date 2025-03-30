@@ -36,9 +36,7 @@ class Sample:
 
     def __str__(self):
         """Return a viewable version of the sample."""
-        return (
-            f"Sensor {self.sn}: {self.temperature}°, {self.moisture}%, {self.voltage} v"
-        )
+        return f"Sensor {self.sn}: air {self.temperature}°, {self.moisture}%, soil {self.voltage} v, battery {self.battery}%"
 
 
 class HubServer(Thread):
