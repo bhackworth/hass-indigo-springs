@@ -21,8 +21,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-class HackwareConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Configure the Hackware integration."""
+class IndigoSpringsConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Configure the Indigo Springs integration."""
 
     VERSION = 1
     MINOR_VERSION = 1
@@ -38,7 +38,7 @@ class HackwareConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(identifier)
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title="Hackware",
+                title="Indigo Springs",
                 data=user_input,
             )
         return self.async_show_form(

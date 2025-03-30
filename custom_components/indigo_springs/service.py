@@ -1,4 +1,4 @@
-"""Server to collect data from all Hackware devices."""
+"""Server to collect data from all Indigo Springs devices."""
 
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -8,7 +8,7 @@ from typing import Any, override
 
 
 class Sample:
-    """A single measurement from one of the Hackware devices."""
+    """A single measurement from one of the Indigo Springs devices."""
 
     sn: str
     temperature: float | None

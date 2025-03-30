@@ -1,4 +1,4 @@
-"""Hackware sensors."""
+"""Indigo Springs sensors."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ class Device(Entity):
 
     should_poll = False
     entity_description = EntityDescription(
-        key="hackware", name="Hackware Device", icon="mdi:hub-outline"
+        key="hackware", name="Indigo Springs Device", icon="mdi:hub-outline"
     )
 
     def __init__(self, hass: HomeAssistant, sample: Sample) -> None:
@@ -59,10 +59,10 @@ class Device(Entity):
         self._attr_icon = "mdi:hub-outline"
         self._attr_state = "online"
         self.entities: list[Entity] = [
-            HackwareMoistureSensor(self),
-            HackwareTempSensor(self),
-            HackwareHumiditySensor(self),
-            HackwareBatterySensor(self),
+            IndigoMoistureSensor(self),
+            IndigoTempSensor(self),
+            IndigoHumiditySensor(self),
+            IndigoBatterySensor(self),
         ]
 
     async def async_update_state(self, sample: Sample) -> None:
@@ -82,7 +82,7 @@ class Device(Entity):
         device_registry.async_get_or_create(
             config_entry_id=entry_id,
             identifiers={(DOMAIN, self.unique_id)},
-            manufacturer="Hackworth",
+            manufacturer="Indigo Springs",
             name=self.name,
             model="PROBE",
             model_id="PROBE-01",
@@ -115,7 +115,7 @@ class SensorBase(SensorEntity):
         return True
 
 
-class HackwareMoistureSensor(SensorBase):
+class IndigoMoistureSensor(SensorBase):
     """Representation of a soil moisture sensor."""
 
     device_class = SensorDeviceClass.HUMIDITY
@@ -136,7 +136,7 @@ class HackwareMoistureSensor(SensorBase):
         return self.device.moisture
 
 
-class HackwareHumiditySensor(SensorBase):
+class IndigoHumiditySensor(SensorBase):
     """Representation of a relative humidity sensor."""
 
     device_class = SensorDeviceClass.HUMIDITY
@@ -157,7 +157,7 @@ class HackwareHumiditySensor(SensorBase):
         return self.device.humidity
 
 
-class HackwareTempSensor(SensorBase):
+class IndigoTempSensor(SensorBase):
     """Representation of a battery sensor."""
 
     device_class = SensorDeviceClass.TEMPERATURE
@@ -178,7 +178,7 @@ class HackwareTempSensor(SensorBase):
         return self.device.temperature
 
 
-class HackwareBatterySensor(SensorBase):
+class IndigoBatterySensor(SensorBase):
     """Representation of a battery sensor."""
 
     device_class = SensorDeviceClass.BATTERY

@@ -9,7 +9,7 @@ from homeassistant.const import CONF_PORT, EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .hub import HackHub
+from .hub import Hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ _PLATFORMS = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the entries we know about."""
 
-    hub = HackHub(hass, entry.data[CONF_PORT], entry)
+    hub = Hub(hass, entry.data[CONF_PORT], entry)
     hub.start()
     if not hub.is_started():
-        raise ConfigEntryNotReady("Can't start the Hackware hub")
+        raise ConfigEntryNotReady("Can't start the Indigo Springs hub")
 
     entry.runtime_data = hub
     cancel = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, hub.stop)

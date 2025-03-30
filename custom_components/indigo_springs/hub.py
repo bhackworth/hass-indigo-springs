@@ -1,4 +1,4 @@
-"""Integration point for all Hackware devices."""
+"""Integration point for all Indigo Springs devices."""
 
 import logging
 
@@ -12,7 +12,7 @@ from .service import HubServer, Sample
 _LOGGER = logging.getLogger(__name__)
 
 
-class HackHub:
+class Hub:
     """Handle interactions with custom-written sensors."""
 
     _add_entities: AddEntitiesCallback | None = None
@@ -24,7 +24,7 @@ class HackHub:
         super().__init__()
         self.hass = hass
         self.entry = entry
-        _LOGGER.info(f"Starting Hackware server on port {port}")  # noqa: G004
+        _LOGGER.info(f"Starting Indigo Springs server on port {port}")  # noqa: G004
         self.server = HubServer(port)
         # Bind the callback to this instance of the hub.
         self.server.add_callback(self.update_sensor_value.__get__(self, self.__class__))
@@ -40,7 +40,7 @@ class HackHub:
 
     def stop(self):
         """Stop the hub."""
-        _LOGGER.info("Stopping the HackHubServer")
+        _LOGGER.info("Stopping the Indigo Springs server")
         self.server.stop()
 
     def set_add_entities_callback(self, cb: AddEntitiesCallback) -> None:
