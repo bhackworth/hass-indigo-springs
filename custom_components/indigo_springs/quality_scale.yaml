@@ -1,23 +1,23 @@
 rules:
   # Bronze
-  action-setup: done
-  appropriate-polling: done
-  brands: done
-  common-modules: done
-  config-flow-test-coverage: done
-  config-flow: done
-  dependency-transparency: done
-  docs-actions: done
-  docs-high-level-description: done
-  docs-installation-instructions: done
-  docs-removal-instructions: done
-  entity-event-setup: done
-  entity-unique-id: done
-  has-entity-name: done
-  runtime-data: done
-  test-before-configure: done
-  test-before-setup: done
-  unique-config-entry: done
+  action-setup: No actions for this integration.
+  appropriate-polling: Using push.
+  brands: PR in progress.
+  common-modules: todo
+  config-flow-test-coverage: todo
+  config-flow: Done.
+  dependency-transparency: todo
+  docs-actions: No actions for this integration.
+  docs-high-level-description: todo
+  docs-installation-instructions: todo
+  docs-removal-instructions: todo
+  entity-event-setup: todo
+  entity-unique-id: Done.
+  has-entity-name: Done.
+  runtime-data: Done.
+  test-before-configure: todo
+  test-before-setup: todo
+  unique-config-entry: Done.
 
   # Silver
   action-exceptions: todo

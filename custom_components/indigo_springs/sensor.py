@@ -41,8 +41,12 @@ class Device(Entity):
     battery = None
 
     should_poll = False
+
     entity_description = EntityDescription(
-        key="hackware", name="Indigo Springs Device", icon="mdi:hub-outline"
+        key="indigo",
+        name="Indigo Springs Device",
+        icon="mdi:hub-outline",
+        has_entity_name=True,
     )
 
     def __init__(self, hass: HomeAssistant, sample: Sample) -> None:
