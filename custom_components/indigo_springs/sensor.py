@@ -39,6 +39,7 @@ class Device(Entity):
     humidity = None
     moisture = None
     battery = None
+    solar = None
 
     should_poll = False
 
@@ -53,21 +54,29 @@ class Device(Entity):
         """Initialize the device that contains some sensors."""
 
         self.sn = sample.sn
+        self.fw = sample.fw
+        self.sw = sample.sw
         self.temperature = sample.temperature
         self.humidity = sample.humidity
         self.moisture = sample.moisture
+        self.solar = sample.solar
         self.battery = sample.battery
         self.unique_id = f"probe_{self.sn}"
         self.hass = hass
         self.name = f"Probe {self.sn}"
         self._attr_icon = "mdi:hub-outline"
         self._attr_state = "online"
-        self.entities: list[Entity] = [
-            IndigoMoistureSensor(self),
-            IndigoTempSensor(self),
-            IndigoHumiditySensor(self),
-            IndigoBatterySensor(self),
-        ]
+        self.entities: list[Entity] = []
+        if self.temperature is not None:
+            self.entities.append(IndigoTempSensor(self))
+        if self.humidity is not None:
+            self.entities.append(IndigoHumiditySensor(self))
+        if self.battery is not None:
+            self.entities.append(IndigoBatterySensor(self))
+        if self.moisture is not None:
+            self.entities.append(IndigoMoistureSensor(self))
+        if self.solar is not None:
+            self.entities.append(IndigoSolarSensor(self))
 
     async def async_update_state(self, sample: Sample) -> None:
         """Update values with a new sample."""
@@ -91,8 +100,8 @@ class Device(Entity):
             model="PROBE",
             model_id="PROBE-01",
             serial_number=self.sn,
-            sw_version="0.1",
-            hw_version="0.1",
+            sw_version=self.sw,
+            hw_version=self.hw,
         )
 
 
@@ -201,3 +210,24 @@ class IndigoBatterySensor(SensorBase):
     def native_value(self) -> float:
         """Return the battery level."""
         return self.device.battery
+
+
+class IndigoSolarSensor(SensorBase):
+    """Representation of a solar charger."""
+
+    device_class = SensorDeviceClass.VOLTAGE
+    _attr_icon = "mdi:solar-power"
+    _attr_native_unit_of_measurement = "mV"
+    _attr_suggested_display_precision = 0
+    _attr_name = "Solar charger"
+
+    def __init__(self, device: Device) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(device)
+        self.unique_id = f"{device.unique_id}_solar"
+
+    @property
+    def native_value(self) -> float:
+        """Return the solar panel output voltage."""
+        return self.device.solar

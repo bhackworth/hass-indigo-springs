@@ -16,6 +16,9 @@ class Sample:
     moisture: float | None
     voltage: int | None
     battery: float | None
+    solar: int | None
+    fw: str | None
+    sw: str | None
 
     def __init__(self, post_data: str) -> None:
         """Initialize a sample from JSON data."""
@@ -23,11 +26,14 @@ class Sample:
         # FUTURE: use pydantic
         sample_json = json.loads(post_data)
         self.sn = sample_json["sensor"]
+        self.fw = sample_json.get("fw", "0.1")
+        self.sw = sample_json.get("sw", "0.1")
         self.temperature = sample_json.get("temperature", None)
         self.humidity = sample_json.get("humidity", None)
         self.moisture = sample_json.get("moisture", None)
         self.voltage = sample_json.get("voltage", None)
         self.battery = sample_json.get("battery", None)
+        self.solar = sample_json.get("solar", None)
 
     @staticmethod
     def from_json_str(post_data: str):
