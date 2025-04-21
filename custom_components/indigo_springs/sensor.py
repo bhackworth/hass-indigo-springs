@@ -84,6 +84,9 @@ class Device(Entity):
         self.humidity = sample.humidity
         self.moisture = sample.moisture
         self.battery = sample.battery
+        self.solar = sample.solar
+        self.sw = sample.sw
+        self.hw = sample.hw
 
         for s in list(self.entities):
             s.async_write_ha_state()
