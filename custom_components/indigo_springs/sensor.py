@@ -54,7 +54,7 @@ class Device(Entity):
         """Initialize the device that contains some sensors."""
 
         self.sn = sample.sn
-        self.fw = sample.fw
+        self.hw = sample.hw
         self.sw = sample.sw
         self.temperature = sample.temperature
         self.humidity = sample.humidity

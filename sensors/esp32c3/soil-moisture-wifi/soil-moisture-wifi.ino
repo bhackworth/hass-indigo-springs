@@ -15,7 +15,7 @@
 #include "smooth.hpp"
 #include "arduino_secrets.h"
 
-#define FW_VERSION "1.3.0"
+#define SW_VERSION "1.3.0"
 
 // Hardware versions:
 // 1.0 - 5x7cm PCB, ESP32-C6, DHT11 on pin A0, soil moisture sensor on A1
@@ -189,7 +189,7 @@ void sendSample(sample_t * samples) {
 #endif
     json["sensor"] = sensorName;
     json["sn"] = sensorName;
-    json["fw"] = FW_VERSION;
+    json["sw"] = SW_VERSION;
     json["hw"] = HW_VERSION;
 
     String data;
