@@ -1,13 +1,17 @@
 """Integration point for all Indigo Springs devices."""
 
+import json
 import logging
 
+from homeassistant import core as ha
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import URL_API
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.http import HomeAssistantView, HTTPStatus, web
 
+from .sample import Sample
 from .sensor import Device
-from .service import HubServer, Sample
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,31 +21,15 @@ class Hub:
 
     _add_entities: AddEntitiesCallback | None = None
 
-    def __init__(
-        self, hass: HomeAssistant, port: int = 8234, entry: ConfigEntry | None = None
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry | None = None) -> None:
         """Create a new server instance."""
+
         super().__init__()
         self.hass = hass
         self.entry = entry
-        _LOGGER.info(f"Starting Indigo Springs server on port {port}")  # noqa: G004
-        self.server = HubServer(port)
-        # Bind the callback to this instance of the hub.
-        self.server.add_callback(self.update_sensor_value.__get__(self, self.__class__))
+        hass.http.register_view(APIIndigoSamplesView(self))
+
         self.devices: dict[str, Device] = {}
-
-    def start(self) -> None:
-        """Start the hub."""
-        self.server.start()
-
-    def is_started(self) -> bool:
-        """Determine if the hub started."""
-        return self.server.is_alive()
-
-    def stop(self):
-        """Stop the hub."""
-        _LOGGER.info("Stopping the Indigo Springs server")
-        self.server.stop()
 
     def set_add_entities_callback(self, cb: AddEntitiesCallback) -> None:
         """Save away the routine to call when we've got new devices."""
@@ -55,7 +43,7 @@ class Hub:
         if self._add_entities:
             self._add_entities(device.entities)
 
-    def update_sensor_value(self, reading: Sample, cbdata) -> None:
+    def update_sensor_value(self, reading: Sample) -> None:
         """Handle new readings."""
         if not reading.sn:
             return
@@ -72,3 +60,39 @@ class Hub:
         self.hass.add_job(
             device.async_update_state.__get__(device, device.__class__), reading
         )
+
+
+class APIIndigoSamplesView(HomeAssistantView):
+    """View to handle Status requests."""
+
+    url = URL_API + "indigo-springs/samples"
+    name = "indigo-springs:samples"
+
+    def __init__(self, hub: Hub) -> None:
+        """Initialize the view."""
+        super().__init__()
+        self.hub = hub
+
+    @ha.callback
+    def get(self, request: web.Request) -> web.Response:
+        """Get status of the service."""
+        return self.json({"status": "OK"})
+
+    @ha.callback
+    async def post(self, request: web.Request) -> web.Response:
+        """Add a sample."""
+        body = await request.text()
+        try:
+            data = json.loads(body) if body else None
+        except ValueError:
+            return self.json_message(
+                "Data should be valid JSON.", HTTPStatus.BAD_REQUEST
+            )
+        if not data:
+            return self.json({"status": "error", "message": "No data"}, status=400)
+        if "sn" not in data:
+            return self.json({"status": "error", "message": "No SN"}, status=400)
+
+        sample = Sample(**data)
+        self.hub.update_sensor_value(sample)
+        return self.json({"status": "OK", "sn": f"{sample.sn}"})

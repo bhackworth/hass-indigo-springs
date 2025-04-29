@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import Platform
 
 from .const import DOMAIN
-from .service import Sample
+from .sample import Sample
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,9 +26,7 @@ async def async_setup_entry(
     """Set up our sensors."""
 
     hub = entry.runtime_data
-
     hub.set_add_entities_callback(add_entities)
-
     return True
 
 

@@ -15,7 +15,7 @@
 #include "smooth.hpp"
 #include "arduino_secrets.h"
 
-#define SW_VERSION "1.3.0"
+#define SW_VERSION "1.4.0"
 
 // Hardware versions:
 // 1.0 - 5x7cm PCB, ESP32-C6, DHT11 on pin A0, soil moisture sensor on A1
@@ -34,12 +34,13 @@ uint8_t macAddress[WL_MAC_ADDR_LENGTH];
 typedef struct {
     char *host;
     uint16_t port;
+    char *token;
 } server_t;
 
 server_t servers[] = {
-    { "192.168.1.11", 8200 }, // tracing server
-    { "192.168.1.61", 8234 }, // homeassistant-dev
-    { "homeassistant.local", 8234 }, // homeassistant-prod
+    { "192.168.1.11", 8200, NULL }, // tracing server
+    { "192.168.1.61", 8123, TOKEN_DEV }, // homeassistant-dev
+    { "homeassistant.local", 8123, TOKEN_PROD }, // homeassistant-prod
 };
 
 #define DEBUG_PRINTLN(x) Serial.println(x)
@@ -48,7 +49,7 @@ server_t servers[] = {
 #define MILLI (1000)
 #define MICRO (1000 * 1000)
 
-const int secondsToSleep = 5 * 60;
+int secondsToSleep = 5 * 60;
 
 // To reduce the jumpiness of readings, report a moving average
 // over a certain number of samples.
@@ -110,6 +111,10 @@ void waitForSerial(int millisec = 1000) {
     while (!Serial.available() && millis() < waitUntil) {
         delay(100);
     }
+    if (Serial.available()) {
+	Serial.printf("Serial monitor detected; shortening the refresh interval.\n");
+        secondsToSleep /= 30;
+    }
 }
 void setup() {
     waitForSerial();
@@ -156,7 +161,6 @@ float roundOff(float val) {
 }
 void sendSample(sample_t * samples) {
     WiFiClient net;
-    HTTPClient client;
 
     DEBUG_PRINTLN("Sending sample");
     Serial.printf("Connecting to Wi-Fi network %s", SECRET_SSID);
@@ -175,6 +179,7 @@ void sendSample(sample_t * samples) {
     snprintf(sensorName, sizeof(sensorName)/sizeof(char),
         "%02X%02X%02X", macAddress[3], macAddress[4], macAddress[5]);
 
+    printWifiStatus();
     JsonDocument json;
 
     json["voltage"] = samples->batteryVoltage.get();
@@ -199,11 +204,17 @@ void sendSample(sample_t * samples) {
 
     for (int idx = 0; idx < (sizeof(servers)/sizeof(servers[0])); idx++) {
         server_t server = servers[idx];
+        HTTPClient client;
 
         Serial.printf("Connecting to %s:%d\r\n", server.host, server.port);
-        if (client.begin(net, server.host, server.port, "/api/samples")) {
+        if (client.begin(net, server.host, server.port, "/api/indigo-springs/samples")) {
             client.addHeader("Host", server.host);
-            client.addHeader("Content-type", "text/json");
+            client.addHeader("Content-type", "application/json");
+            if (server.token != NULL) {
+                char token[512];
+                snprintf(token, sizeof(token), "Bearer %s", server.token);
+                client.addHeader("Authorization", token);
+            }
             client.addHeader("Connection", "close");
 
             int responseCode = client.POST(data);
