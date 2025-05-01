@@ -59,6 +59,7 @@ class Device(Entity):
         self.moisture = sample.moisture
         self.solar = sample.solar
         self.battery = sample.battery
+        self.rssi = sample.rssi
         self.unique_id = f"probe_{self.sn}"
         self.hass = hass
         self.name = f"Probe {self.sn}"
@@ -75,6 +76,8 @@ class Device(Entity):
             self.entities.append(IndigoMoistureSensor(self))
         if self.solar is not None:
             self.entities.append(IndigoSolarSensor(self))
+        if self.rssi is not None:
+            self.entities.append(IndigoSignalSensor(self))
 
     async def async_update_state(self, sample: Sample) -> None:
         """Update values with a new sample."""
@@ -85,6 +88,7 @@ class Device(Entity):
         self.solar = sample.solar
         self.sw = sample.sw
         self.hw = sample.hw
+        self.rssi = sample.rssi
 
         for s in list(self.entities):
             s.async_write_ha_state()
@@ -232,3 +236,24 @@ class IndigoSolarSensor(SensorBase):
     def native_value(self) -> float:
         """Return the solar panel output voltage."""
         return self.device.solar
+
+
+class IndigoSignalSensor(SensorBase):
+    """Representation of a Wi-Fi signal strength."""
+
+    device_class = SensorDeviceClass.SIGNAL_STRENGTH
+    _attr_icon = "mdi:wifi"
+    _attr_native_unit_of_measurement = "dBm"
+    _attr_suggested_display_precision = 0
+    _attr_name = "Signal strength"
+
+    def __init__(self, device: Device) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(device)
+        self.unique_id = f"{device.unique_id}_rssi"
+
+    @property
+    def native_value(self) -> int:
+        """Return the Wi-Fi signal strength."""
+        return self.device.rssi

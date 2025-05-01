@@ -15,13 +15,13 @@
 #include "smooth.hpp"
 #include "arduino_secrets.h"
 
-#define SW_VERSION "1.4.0"
+#define SW_VERSION "1.4.2"
 
 // Hardware versions:
 // 1.0 - 5x7cm PCB, ESP32-C6, DHT11 on pin A0, soil moisture sensor on A1
 // 1.1 - Add battery voltage divider circuit on A2
 // 1.2 - Swap DHT11 for DHT22, ESP32-C3 for -C6
-// 1.3 - Add solar charger with divider circuit on A1
+// 1.3 - Add solar charger with divider circuit on A1; 47k resistor from +, 22k to GND
 #define HW_VERSION "1.3.0"
 #define MEASURE_SOLAR
 
@@ -105,15 +105,15 @@ typedef struct {
 RTC_DATA_ATTR sample_t samples;
 DHT dht(dhtPin, DHT22);
 
-void waitForSerial(int millisec = 1000) {
+void waitForSerial(int millisec = 1500) {
     Serial.begin(19200);
     int waitUntil = millis() + millisec;
-    while (!Serial.available() && millis() < waitUntil) {
-        delay(100);
-    }
-    if (Serial.available()) {
-	Serial.printf("Serial monitor detected; shortening the refresh interval.\n");
-        secondsToSleep /= 30;
+    while (millis() < waitUntil) {
+        if (Serial.available()) {
+            Serial.println("Serial monitor detected; shortening the refresh interval.");
+            secondsToSleep /= 30;
+            break;
+        }
     }
 }
 void setup() {
@@ -163,16 +163,14 @@ void sendSample(sample_t * samples) {
     WiFiClient net;
 
     DEBUG_PRINTLN("Sending sample");
-    Serial.printf("Connecting to Wi-Fi network %s", SECRET_SSID);
+    Serial.printf("Connecting to Wi-Fi network %s\r\n", SECRET_SSID);
+
+    int maxSecondsForWiFi = 5;
+
     int status = WiFi.begin(SECRET_SSID, SECRET_PASS);
-    int tries = 50;
-    while ((tries-- > 0) && WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(100);
-    }
-    Serial.println();
-    if (tries <= 0) {
-        Serial.println("Couldn't connect to Wi-Fi");
+    status = WiFi.waitForConnectResult(maxSecondsForWiFi * MILLI);
+    if (status != WL_CONNECTED) {
+        Serial.printf("Couldn't connect to Wi-Fi: %d\r\n", status);
         return;
     }
     WiFi.macAddress(macAddress);
@@ -182,6 +180,7 @@ void sendSample(sample_t * samples) {
     printWifiStatus();
     JsonDocument json;
 
+    json["rssi"] = WiFi.RSSI();
     json["voltage"] = samples->batteryVoltage.get();
 #ifdef MEASURE_SOIL
     json["moisture"] = roundOff(samples->moisture.get());
@@ -288,7 +287,9 @@ void loop() {
 void printWifiStatus() {
     Serial.printf("IP address: ");
     Serial.println(WiFi.localIP());
-    Serial.printf("Signal strength: %l dBm\r\n", WiFi.RSSI());
+    Serial.print("Signal strength: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
     Serial.printf("Sensor: %s\r\n", sensorName);
 }
 

@@ -15,3 +15,4 @@ class Sample(BaseModel):
     solar: int = None
     sw: str = None
     hw: str = None
+    rssi: int = None
