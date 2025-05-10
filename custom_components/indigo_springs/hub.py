@@ -48,9 +48,10 @@ class Hub:
         if not reading.sn:
             return
 
+        _LOGGER.info(reading)
+
         device: Device = None
         if reading.sn in self.devices:
-            _LOGGER.info(reading)
             device = self.devices[reading.sn]
         else:
             _LOGGER.info(f"Add new device: {reading.sn}")  # noqa: G004

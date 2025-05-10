@@ -16,3 +16,5 @@ class Sample(BaseModel):
     sw: str = None
     hw: str = None
     rssi: int = None
+    attempts: int = None
+    errors: int = None

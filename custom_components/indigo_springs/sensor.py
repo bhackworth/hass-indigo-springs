@@ -1,6 +1,7 @@
 """Indigo Springs sensors."""
 
 from __future__ import annotations
+from enum import Enum
 
 import logging
 
@@ -30,6 +31,18 @@ async def async_setup_entry(
     return True
 
 
+class HealthStates(Enum):
+    """Health states for the device."""
+
+    HEALTHY = "Healthy"
+    UNHEALTHY = "Unhealthy"
+    UNKNOWN = "Unknown"
+
+    def __str__(self) -> str:
+        """Return the string representation of the state."""
+        return self.value
+
+
 class Device(Entity):
     """Base class for all of our devices."""
 
@@ -38,6 +51,10 @@ class Device(Entity):
     moisture = None
     battery = None
     solar = None
+    rssi = None
+    attempts = None
+    errors = None
+    health = HealthStates.UNKNOWN
 
     should_poll = False
 
@@ -60,6 +77,9 @@ class Device(Entity):
         self.solar = sample.solar
         self.battery = sample.battery
         self.rssi = sample.rssi
+        self.attempts = sample.attempts
+        self.errors = sample.errors
+        self.health = HealthStates.HEALTHY
         self.unique_id = f"probe_{self.sn}"
         self.hass = hass
         self.name = f"Probe {self.sn}"
@@ -78,6 +98,8 @@ class Device(Entity):
             self.entities.append(IndigoSolarSensor(self))
         if self.rssi is not None:
             self.entities.append(IndigoSignalSensor(self))
+        if self.attempts is not None:
+            self.entities.append(IndigoHealthSensor(self))
 
     async def async_update_state(self, sample: Sample) -> None:
         """Update values with a new sample."""
@@ -89,6 +111,18 @@ class Device(Entity):
         self.sw = sample.sw
         self.hw = sample.hw
         self.rssi = sample.rssi
+
+        if sample.errors > self.errors:
+            _LOGGER.warning(
+                "Device %s has %d new connection errors",
+                self.sn,
+                sample.errors - self.errors,
+            )
+            self.health = HealthStates.UNHEALTHY
+        else:
+            self.health = HealthStates.HEALTHY
+        self.attempts = sample.attempts
+        self.errors = sample.errors
 
         for s in list(self.entities):
             s.async_write_ha_state()
@@ -257,3 +291,23 @@ class IndigoSignalSensor(SensorBase):
     def native_value(self) -> int:
         """Return the Wi-Fi signal strength."""
         return self.device.rssi
+
+
+class IndigoHealthSensor(SensorBase):
+    """Representation of the device's connection health."""
+
+    device_class = SensorDeviceClass.ENUM
+    _attr_state_class = None
+    _attr_icon = "mdi:wifi"
+    _attr_name = "Connection health"
+
+    def __init__(self, device: Device) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(device)
+        self.unique_id = f"{device.unique_id}_connection"
+
+    @property
+    def native_value(self) -> str:
+        """Return the connection health."""
+        return self.device.health.value

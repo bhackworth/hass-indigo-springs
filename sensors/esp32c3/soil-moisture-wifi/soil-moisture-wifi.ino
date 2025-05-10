@@ -5,17 +5,15 @@
 #include <DHT.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <NetworkClient.h>
 #include <HTTPClient.h>
 #include <esp_sleep.h>
-#include <esp_wifi.h>
 
 #include <cstdio>
 
 #include "smooth.hpp"
 #include "arduino_secrets.h"
 
-#define SW_VERSION "1.4.2"
+#define SW_VERSION "1.4.3"
 
 // Hardware versions:
 // 1.0 - 5x7cm PCB, ESP32-C6, DHT11 on pin A0, soil moisture sensor on A1
@@ -103,6 +101,10 @@ typedef struct {
 } sample_t;
 
 RTC_DATA_ATTR sample_t samples;
+RTC_DATA_ATTR struct {
+    int attempts;
+    int errors;
+} connectionStats;
 DHT dht(dhtPin, DHT22);
 
 void waitForSerial(int millisec = 1500) {
@@ -165,11 +167,13 @@ void sendSample(sample_t * samples) {
     DEBUG_PRINTLN("Sending sample");
     Serial.printf("Connecting to Wi-Fi network %s\r\n", SECRET_SSID);
 
+    connectionStats.attempts++;
     int maxSecondsForWiFi = 5;
 
     int status = WiFi.begin(SECRET_SSID, SECRET_PASS);
     status = WiFi.waitForConnectResult(maxSecondsForWiFi * MILLI);
     if (status != WL_CONNECTED) {
+        connectionStats.errors++;
         Serial.printf("Couldn't connect to Wi-Fi: %d\r\n", status);
         return;
     }
@@ -195,6 +199,9 @@ void sendSample(sample_t * samples) {
     json["sn"] = sensorName;
     json["sw"] = SW_VERSION;
     json["hw"] = HW_VERSION;
+
+    json["attempts"] = connectionStats.attempts;
+    json["errors"] = connectionStats.errors;
 
     String data;
     serializeJson(json, data);
